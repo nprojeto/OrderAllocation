@@ -5,6 +5,7 @@
       <NuxtLink to="/empresa/ordens/nova" class="btn">+ Nova OS</NuxtLink>
     </div>
     <div v-if="err" class="alert err">{{ err }}</div>
+    <PendingBanner />
     <div v-if="noCriteria" class="alert warn">Para lançar OS você precisa de um conjunto de <NuxtLink to="/empresa/criterios">critérios de validação</NuxtLink> aprovado pelo admin.</div>
     <StatsPanel v-if="s" :s="s" mode="empresa" />
     <div v-else-if="!err" class="empty">Carregando…</div>

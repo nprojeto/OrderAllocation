@@ -15,12 +15,14 @@
             <td class="small">{{ t.document }}</td>
             <td class="small">{{ t.skills }}</td>
             <td class="small">{{ t.base_address || '—' }}<div v-if="t.base_lat" class="muted">{{ t.base_lat }}, {{ t.base_lng }} · {{ t.radius_km }} km</div>
-              <span v-if="t.available" class="badge b-finalizada">disponível</span></td>
+              <span v-if="t.available" class="badge b-finalizada">disponível</span>
+              <div v-if="t.location_at" class="muted">GPS: <a :href="mapsUrl(t.current_lat, t.current_lng)" target="_blank">{{ dt(t.location_at) }}</a></div></td>
             <td><StatusBadge :status="t.status" /><div v-if="t.status_note" class="small muted">{{ t.status_note }}</div></td>
             <td style="white-space:nowrap">
               <button v-if="t.status !== 'aprovado'" class="btn ok sm" :disabled="busy" @click="set(t, 'aprovado')">Aprovar</button>
               <button v-if="t.status === 'pendente'" class="btn danger sm" :disabled="busy" @click="set(t, 'reprovado')">Reprovar</button>
               <button v-if="t.status === 'aprovado'" class="btn danger sm" :disabled="busy" @click="set(t, 'bloqueado')">Bloquear</button>
+              <ResetPasswordButton :user="t" />
             </td>
           </tr>
         </table>
@@ -29,7 +31,7 @@
   </div>
 </template>
 <script setup lang="ts">
-import { dt } from '~/composables/useFormat'
+import { dt, mapsUrl } from '~/composables/useFormat'
 const api = useApi()
 const tabs = [{ v: 'pendente', l: 'Pendentes' }, { v: 'aprovado', l: 'Aprovados' }, { v: 'reprovado', l: 'Reprovados' }, { v: 'bloqueado', l: 'Bloqueados' }, { v: '', l: 'Todos' }]
 const st = ref('pendente'); const items = ref<any[]>([]); const err = ref(''); const busy = ref(false)

@@ -1,6 +1,7 @@
 <template>
   <div>
     <div class="page-head"><div><h1>Nova ordem de serviço</h1><div class="muted small">Será enviada aos técnicos ativos mais próximos</div></div></div>
+    <PendingBanner />
     <div v-if="err" class="alert err">{{ err }}</div>
     <div v-if="!templates.length && loaded" class="alert warn">
       Você ainda não tem critérios de validação aprovados. <NuxtLink to="/empresa/criterios">Cadastre aqui</NuxtLink>.
@@ -24,7 +25,7 @@
           <h2>Cliente</h2>
           <div class="field"><label>Nome do cliente</label><input v-model="f.client_name" required /></div>
           <div class="grid g2">
-            <div class="field"><label>WhatsApp do cliente</label><input v-model="f.client_phone" placeholder="(12) 99999-9999" /></div>
+            <div class="field"><label>WhatsApp do cliente</label><input v-model="f.client_phone" v-mask="'phone'" placeholder="(12) 99999-9999" /></div>
             <div class="field"><label>E-mail do cliente</label><input v-model="f.client_email" type="email" /></div>
           </div>
           <div class="hint">Informe ao menos um contato. O cliente recebe o link para confirmar a data.</div>
@@ -75,6 +76,7 @@
 
 <script setup lang="ts">
 import { brl, mapsUrl } from '~/composables/useFormat'
+import { validPhone } from '~/composables/useMask'
 const api = useApi()
 const templates = ref<any[]>([]); const loaded = ref(false)
 const err = ref(''); const busy = ref(false); const geo = ref(false); const geoNote = ref('')
@@ -102,7 +104,9 @@ async function geocode() {
   } catch { geoNote.value = 'Falha na busca. Preencha manualmente.' } finally { geo.value = false }
 }
 async function submit() {
-  busy.value = true; err.value = ''
+  err.value = ''
+  if (f.client_phone && !validPhone(f.client_phone)) { err.value = 'WhatsApp do cliente inválido.'; window.scrollTo(0, 0); return }
+  busy.value = true
   try {
     const r = await api.post('/company/os', { ...f, lat: String(f.lat).replace(',', '.'), lng: String(f.lng).replace(',', '.') })
     await navigateTo('/empresa/ordens/' + r.id)

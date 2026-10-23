@@ -23,6 +23,10 @@
       <header class="top">
         <button class="burger" @click="open = !open">☰</button>
         <div style="flex:1" />
+        <span v-if="profile.role === 'tecnico' && profile.available" :class="['gps', { on: tracker.state.on }]"
+              :title="tracker.state.error || 'Sua localização é enviada enquanto você está disponível'">
+          {{ tracker.state.on ? '● GPS ativo' : '○ ' + (tracker.state.error || 'GPS aguardando') }}
+        </span>
         <NotificationsBell />
       </header>
       <main class="content">
@@ -39,12 +43,16 @@ import { ROLE } from '~/composables/useFormat'
 const { profile, logout } = useAuth()
 const route = useRoute()
 const open = ref(false)
+const tracker = useTracker()
+watch(() => profile.value?.role === 'tecnico' && profile.value?.status === 'aprovado' && profile.value?.available,
+  (v) => (v ? tracker.start('disponivel') : tracker.stop('disponivel')), { immediate: true })
 
 const MENUS: Record<string, { to: string; label: string; ic: string; badge?: any }[]> = {
   empresa: [
     { to: '/empresa', label: 'Painel', ic: '▦' },
     { to: '/empresa/ordens', label: 'Ordens de serviço', ic: '≡' },
     { to: '/empresa/ordens/nova', label: 'Nova OS', ic: '+' },
+    { to: '/empresa/ordens/lote', label: 'Importar em lote', ic: '⇪' },
     { to: '/empresa/criterios', label: 'Critérios de validação', ic: '✓' },
   ],
   tecnico: [
@@ -70,7 +78,7 @@ const menu = computed(() => MENUS[profile.value?.role] || [])
 const isOn = (to: string) => {
   const home = '/' + route.path.split('/')[1]
   if (to === home) return route.path === to
-  if (to === '/empresa/ordens') return route.path.startsWith(to) && route.path !== '/empresa/ordens/nova'
+  if (to === '/empresa/ordens') return route.path.startsWith(to) && !['/empresa/ordens/nova', '/empresa/ordens/lote'].includes(route.path)
   return route.path.startsWith(to)
 }
 </script>
@@ -92,6 +100,8 @@ nav a.on, .bottom a.on { background: #ffffff1a; color: #fff; box-shadow: inset 3
 .cnt { margin-left: auto; background: var(--accent); color: #fff; border-radius: 999px; font-size: 11px; padding: 0 7px; }
 .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .top { height: 56px; display: flex; align-items: center; padding: 0 22px; border-bottom: 1px solid var(--line); background: #fff; position: sticky; top: 0; z-index: 5; }
+.gps { font-size: 12px; margin-right: 12px; color: var(--muted); }
+.gps.on { color: var(--ok); font-weight: 600; }
 .burger { display: none; font-size: 20px; background: none; border: 0; cursor: pointer; }
 .content { padding: 24px; max-width: 1200px; width: 100%; }
 .scrim { display: none; }

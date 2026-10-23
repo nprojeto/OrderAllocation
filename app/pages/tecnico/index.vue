@@ -16,6 +16,7 @@
         <h2 style="margin:0">{{ p?.available ? 'Você está DISPONÍVEL' : 'Você está indisponível' }}</h2>
         <div class="small muted">
           {{ p?.available ? 'Você recebe notificações de novas OS próximas.' : 'Ative para receber notificações de OS próximas.' }}
+          <span v-if="p?.available"> Mantenha o app aberto: seu GPS é usado para achar as OS mais próximas.</span>
           <span v-if="p?.base_lat">Raio: {{ p.radius_km }} km · {{ p.base_address || `${p.base_lat}, ${p.base_lng}` }}</span>
         </div>
       </div>

@@ -42,11 +42,24 @@ export const useAuth = () => {
     return data
   }
 
+  async function requestReset(email: string) {
+    const cfg = useRuntimeConfig()
+    const redirectTo = window.location.origin + cfg.app.baseURL + '?reset=1'
+    const { error } = await sb().auth.resetPasswordForEmail(email.trim(), { redirectTo })
+    if (error) throw new Error(/rate|limit/i.test(error.message) ? 'Muitas tentativas. Aguarde alguns minutos e tente de novo.' : error.message)
+  }
+
+  async function updatePassword(password: string) {
+    if (password.length < 8) throw new Error('A senha deve ter ao menos 8 caracteres.')
+    const { error } = await sb().auth.updateUser({ password })
+    if (error) throw new Error(/different|same/i.test(error.message) ? 'A nova senha deve ser diferente da atual.' : error.message)
+  }
+
   async function logout() {
     await sb()?.auth.signOut()
     profile.value = null
     await navigateTo('/')
   }
 
-  return { profile, ready, load, login, signup, logout }
+  return { profile, ready, load, login, signup, logout, requestReset, updatePassword }
 }

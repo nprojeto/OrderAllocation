@@ -12,6 +12,7 @@
             <td>{{ ROLE[u.role] }}</td>
             <td><StatusBadge :status="u.status" /></td>
             <td>
+              <ResetPasswordButton :user="u" />
               <template v-if="u.id !== me?.id">
                 <button v-if="u.status === 'aprovado'" class="btn danger sm" :disabled="busy" @click="set(u, 'bloqueado')">Bloquear</button>
                 <button v-else class="btn ok sm" :disabled="busy" @click="set(u, 'aprovado')">Liberar</button>
@@ -26,7 +27,7 @@
           <select v-model="f.role"><option value="qualidade">Qualidade</option><option value="admin">Admin</option></select></div>
         <div class="field"><label>Nome</label><input v-model="f.name" /></div>
         <div class="field"><label>E-mail</label><input v-model="f.email" type="email" /></div>
-        <div class="field"><label>Telefone</label><input v-model="f.phone" /></div>
+        <div class="field"><label>Telefone</label><input v-model="f.phone" v-mask="'phone'" /></div>
         <div class="field"><label>Senha inicial</label><input v-model="f.password" type="text" /><div class="hint">Mínimo 8 caracteres. Envie para a pessoa.</div></div>
         <button class="btn block" :disabled="busy" @click="create">Criar usuário</button>
       </div>

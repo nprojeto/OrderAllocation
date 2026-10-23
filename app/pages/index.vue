@@ -17,6 +17,7 @@
         <div class="field"><label>E-mail</label><input v-model="email" type="email" required autocomplete="email" /></div>
         <div class="field"><label>Senha</label><input v-model="password" type="password" required autocomplete="current-password" /></div>
         <button class="btn block" :disabled="busy">{{ busy ? 'Entrando…' : 'Entrar' }}</button>
+        <div style="text-align:right;margin-top:8px"><NuxtLink to="/esqueci" class="small">Esqueci minha senha</NuxtLink></div>
       </form>
       <hr class="sep" />
       <p class="small muted" style="margin:0">Ainda não tem conta? <NuxtLink to="/cadastro">Cadastre sua empresa ou seja técnico</NuxtLink></p>

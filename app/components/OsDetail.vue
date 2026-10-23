@@ -213,7 +213,7 @@
           <h2>Cliente e local</h2>
           <dl class="kv">
             <dt>Cliente</dt><dd>{{ os.client_name }}</dd>
-            <template v-if="os.client_phone"><dt>WhatsApp</dt><dd>{{ os.client_phone }}</dd></template>
+            <template v-if="os.client_phone"><dt>WhatsApp</dt><dd>{{ maskPhone(os.client_phone) }}</dd></template>
             <template v-if="os.client_email"><dt>E-mail</dt><dd>{{ os.client_email }}</dd></template>
             <dt>Endereço</dt><dd>{{ os.address }}</dd>
             <dt>Coordenadas</dt><dd class="small mono">{{ os.lat }}, {{ os.lng }}</dd>
@@ -223,11 +223,23 @@
           <p v-if="os.description" style="white-space:pre-wrap;margin-bottom:0" class="small">{{ os.description }}</p>
         </div>
 
+        <div v-if="showLive" class="card">
+          <h2>Técnico agora</h2>
+          <template v-if="os.tech_location_at">
+            <div class="live"><b>{{ liveKm }} km</b> do local</div>
+            <div class="small muted">GPS atualizado {{ ago(os.tech_location_at) }}<span v-if="os.tech_location_accuracy"> · precisão ±{{ Math.round(os.tech_location_accuracy) }} m</span></div>
+            <div v-if="stale" class="alert warn small" style="margin:8px 0 0">Localização desatualizada — o app do técnico pode estar fechado.</div>
+            <a class="btn secondary sm" style="margin-top:10px" :href="`https://www.google.com/maps/dir/?api=1&origin=${os.tech_cur_lat},${os.tech_cur_lng}&destination=${os.lat},${os.lng}`" target="_blank">Ver no mapa</a>
+          </template>
+          <div v-else class="small muted">O técnico ainda não compartilhou a localização.</div>
+          <div v-if="os.start_distance_km !== null && os.start_distance_km !== undefined" class="small" style="margin-top:8px">Iniciou o atendimento a <b>{{ os.start_distance_km }} km</b> do local.</div>
+        </div>
+
         <div v-if="os.tech_name" class="card">
           <h2>Técnico</h2>
           <dl class="kv">
             <dt>Nome</dt><dd>{{ os.tech_name }}</dd>
-            <template v-if="os.tech_phone && role !== 'tecnico'"><dt>Telefone</dt><dd>{{ os.tech_phone }}</dd></template>
+            <template v-if="os.tech_phone && role !== 'tecnico'"><dt>Telefone</dt><dd>{{ maskPhone(os.tech_phone) }}</dd></template>
           </dl>
         </div>
 
@@ -262,6 +274,8 @@
 </template>
 
 <script setup lang="ts">
+import { maskPhone } from '~/composables/useMask'
+import { distanceKm } from '~/composables/useTracker'
 import { ROLE, brl, dt, tOnly, mapsUrl, localToIso, minDateTimeLocal, hours } from '~/composables/useFormat'
 
 const props = defineProps<{ id: string }>()
@@ -278,6 +292,22 @@ const checks = reactive<Record<string, { passed: boolean | null; note: string }>
 const os = computed(() => d.value?.os)
 const role = computed(() => d.value?.viewer?.role)
 const isOwner = computed(() => !!d.value?.viewer?.is_owner_tech)
+const tracker = useTracker()
+const showLive = computed(() => role.value !== 'tecnico' && os.value?.tech_id &&
+  ['agendada', 'em_execucao', 'aguardando_cliente', 'aguardando_tecnico'].includes(os.value.status))
+const liveKm = computed(() => os.value?.tech_cur_lat == null ? '—'
+  : distanceKm({ lat: os.value.tech_cur_lat, lng: os.value.tech_cur_lng }, { lat: os.value.lat, lng: os.value.lng }).toFixed(1))
+const stale = computed(() => os.value?.tech_location_at && Date.now() - new Date(os.value.tech_location_at).getTime() > 30 * 60000)
+const ago = (v: any) => {
+  const m = Math.round((Date.now() - new Date(v).getTime()) / 60000)
+  return m < 1 ? 'agora' : m < 60 ? `há ${m} min` : m < 1440 ? `há ${Math.round(m / 60)} h` : dt(v)
+}
+watch(() => isOwner.value && ['agendada', 'em_execucao'].includes(os.value?.status),
+  (v) => (v ? tracker.start('os-' + props.id) : tracker.stop('os-' + props.id)))
+onBeforeUnmount(() => tracker.stop('os-' + props.id))
+let liveTimer: any
+onMounted(() => { liveTimer = setInterval(() => { if (showLive.value) load() }, 60000) })
+onBeforeUnmount(() => clearInterval(liveTimer))
 const pending = computed(() => d.value?.proposals?.find((p: any) => p.status === 'pendente'))
 const canComment = computed(() => role.value !== 'tecnico' || isOwner.value)
 const lastRejected = computed(() => [...(d.value?.validations || [])].reverse().find((v: any) => v.result === 'reprovada'))
@@ -321,7 +351,7 @@ const acceptOs = () => act(() => api.post(`/tech/os/${props.id}/accept`, { start
 const propose = () => act(() => api.post(`/os/${props.id}/propose`, { start: localToIso(f.start), note: f.note }),
   'Proposta enviada. Envie o link ao cliente.')
 const acceptProposal = (pid: string) => act(() => api.post(`/os/${props.id}/accept-proposal`, { proposal_id: pid }), 'Agendamento confirmado e reservado na sua agenda.')
-const start = () => act(() => api.post(`/os/${props.id}/start`), 'Atendimento iniciado.')
+const start = () => act(async () => { await tracker.sendNow(); return api.post(`/os/${props.id}/start`) }, 'Atendimento iniciado.')
 const complete = () => act(() => api.post(`/os/${props.id}/complete`, { report: f.report }), 'Enviado para a fila de validação.')
 const resend = () => act(() => api.post(`/os/${props.id}/resend`), 'Link reenviado.')
 const comment = () => act(() => api.post(`/os/${props.id}/comment`, { text: f.comment }), 'Comentário registrado.')
@@ -355,5 +385,6 @@ onMounted(load)
 .ev-validacao .dot, .ev-agendada .dot { background: var(--ok); }
 .ev-cancelada .dot, .ev-desistencia .dot { background: var(--bad); }
 .ev-aceite .dot, .ev-concluida .dot { background: var(--accent); }
+.live { font-size: 22px; }
 .cm { background: #f4f7fd; border-radius: 6px; padding: 6px 10px; margin-top: 3px; white-space: pre-wrap; }
 </style>
